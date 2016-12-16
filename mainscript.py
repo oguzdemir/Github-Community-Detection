@@ -1,4 +1,5 @@
 import igraph
+import cairocffi as cairo
 import csv
 
 
@@ -27,26 +28,30 @@ g = igraph.Graph()
 edgeMap = {}
 with open('users.csv','rb') as csvfile:
     reader = csv.reader(csvfile)
+    v_index = 0
     for row in reader:
         processingPerson = row[0].strip()
 
         languageSet = []
-        languages = row[3][1:len(row[3]) - 1].split(",")
+        languages = row[4][1:-1].split(",")
         for lang in languages:
             languageSet.append(lang)
 
         v = Vertex(processingPerson, languageSet)
-        v_index = g.add_vertex(v)
+        g.add_vertex(v)
+        g.vs["name"][v_index] = processingPerson
+
         vertexMap[processingPerson] = v_index
+        v_index += 1
 
-
-        followers = row[1][1:len(row[1])-1].split(",")
+        followers = row[2][1:-1].split(",")
         for person in followers:
-            addToMap(edgeMap,processingPerson,person, 0.4)
+            addToMap(edgeMap,processingPerson,person, 0.3)
 
-        following = row[1][1:len(row[1]) - 1].split(",")
+        following = row[3][1:len(row[1]) - 1].split(",")
         for person in following:
-            addToMap(edgeMap, processingPerson, person, 0.6)
+            addToMap(edgeMap, processingPerson, person, 0.1)
+
 
 count = 0
 for key,value in edgeMap.iteritems():
