@@ -1,7 +1,6 @@
 import igraph
 import csv
-
-
+import Queue
 def purify():
     people = {}
     to_be_discarded = set()
@@ -44,65 +43,144 @@ def addToMap(map, key1, key2, value):
         map[key] = map[key] + value
     else:
         map[key] = value
+        addToMap.counter += 1
+
 
 
 def main():
-    discard = purify()
-    vertexMap = {}
-    g = igraph.Graph()
-    edgeMap = {}
 
-    nodes = set()
+    addToMap.counter = 0
+
+    g = igraph.Graph()
+
+    map = {}
+    mainperson = ""
+    count = 0
+    vertices = set()
+    edgeMap = {}
     with open('users.csv', 'rb') as csvfile:
         reader = csv.reader(csvfile)
-        v_index = 0
         for row in reader:
             processingPerson = row[0].strip()
-            if processingPerson in discard:
-                continue
+            if count == 0:
+                mainperson = processingPerson
+            map[processingPerson] = row
+            count += 1
+    print "Reading done"
+    queue = Queue.Queue()
+    print "Mainperson: " + mainperson
+    vertices.add(mainperson)
 
-            languageSet = []
-            languages = row[4][1:-1].split(",")
-            for lang in languages:
-                languageSet.append(lang)
+    row = map.get(mainperson)
 
-            nodes.add(processingPerson)
+    followers = row[2][1:-1].split(",")
+    following = row[3][1:len(row[1]) - 1].split(",")
 
+    for person in followers:
+        addToMap(edgeMap, mainperson, person, 0.2)
+        queue.put(person)
+
+    for person in following:
+        addToMap(edgeMap, mainperson, person, 0.3)
+        queue.put(person)
+
+    queue.put("!!!!!")
+
+    while queue.qsize() > 0:
+
+        popped = queue.get()
+        print "Poped: " + popped
+        if popped == "!!!!!":
+            break
+        else:
+            vertices.add(popped)
+
+            row = map.get(popped)
+
+            if row:
+                followers = row[2][1:-1].split(",")
+                following = row[3][1:len(row[1]) - 1].split(",")
+
+                if followers:
+                    for person in followers:
+                        addToMap(edgeMap, popped, person, 0.2)
+                        queue.put(person)
+                        vertices.add(person)
+                if following:
+                    for person in following:
+                        addToMap(edgeMap, popped, person, 0.3)
+                        queue.put(person)
+                        vertices.add(person)
+
+    while queue.qsize() > 0:
+        popped = queue.get()
+
+        row = map.get(popped)
+
+        if row:
             followers = row[2][1:-1].split(",")
-            for person in followers:
-                if person not in discard:
-                    nodes.add(person)
-                    addToMap(edgeMap, processingPerson, person, 0.3)
-
             following = row[3][1:len(row[1]) - 1].split(",")
-            for person in following:
-                if person not in discard:
-                    nodes.add(person)
-                    addToMap(edgeMap, processingPerson, person, 0.1)
 
-    for person in nodes:
-        g.add_vertex(name=person)
+            if followers:
+                for person in followers:
+                    if person in vertices:
+                        addToMap(edgeMap, popped, person, 0.2)
+            if following:
+                for person in following:
+                    if person in vertices:
+                        addToMap(edgeMap, popped, person, 0.3)
 
+    print "Mapping done."
+
+    for vertex in vertices:
+        g.add_vertex(vertex, label=vertex)
+
+    print "Edges: " + str(addToMap.counter)
     count = 0
-    for key, value in edgeMap.iteritems():
+    a = 0
+    for key, value in edgeMap.items():
         count += 1
         vertices = key.split("|")
         try:
             g.add_edge(vertices[0], vertices[1], weight=value)
-#            print "V: " + vertices[0] + " = " + vertices[1]
+            del edgeMap[key]
+            #           print "V: " + vertices[0] + " = " + vertices[1]
         except ValueError:
-            a=0
-#           print "Vertex not found: " + vertices[0] + " = " + vertices[1]
+            a += 1
+            # print "Vertex not found: " + vertices[0] + " = " + vertices[1]
+
+    print "Edges are added to the graph. Count is: " + str(count) + " | Errors:" + str(a)
 
     color_list = ['red', 'blue', 'green', 'cyan', 'pink', 'orange', 'grey', 'yellow', 'white', 'black', 'purple',
                   'magenta']
 
-    community = g.community_multilevel()
-    igraph.plot(g, bbox=(0, 0, 2000, 2000), margin=(5, 5, 5, 5),
+    community = g.community_multilevel(weights="weight")
+
+    layout = g.layout("automatic")
+    igraph.plot(community,layout=layout, target = "graph9.pdf", asp=0.35, bbox=(0, 0, 2000, 2000), margin=(100, 100, 100, 100),
                 vertex_color=[color_list[x % len(color_list)] for x in community.membership])
-    print max(community.membership)  # Printed number of communties to 11
-    print 'x'
+
+    print max(community.membership)  # Printed number of communties
 
 
 if __name__ == "__main__":
     main()
+
+"""
+   while q.qsize() != 0:
+        poped = q.get()
+
+        if poped != "!!!!":
+            followers = f1.get(poped)
+            following = f2.get(poped)
+
+            c1 = 0
+            c2 = 0
+            for person in followers:
+                addToMap(edgeMap, processingPerson, person, 0.3)
+                q.put(person)
+
+            for person in following:
+                addToMap(edgeMap, processingPerson, person, 0.1)
+                q.put(person)
+"""
