@@ -1,6 +1,7 @@
 import igraph
 import csv
 import Queue
+import operator
 def purify():
     people = {}
     to_be_discarded = set()
@@ -46,6 +47,13 @@ def addToMap(map, key1, key2, value):
         addToMap.counter += 1
 
 
+def addMap(map,  key, value):
+    if key != " " and key != "":
+        if key in map:
+            map[key] = map[key] + value
+        else:
+            map[key] = value
+
 
 def main():
 
@@ -89,7 +97,6 @@ def main():
     while queue.qsize() > 0:
 
         popped = queue.get()
-        print "Poped: " + popped
         if popped == "!!!!!":
             break
         else:
@@ -133,7 +140,8 @@ def main():
     print "Mapping done."
 
     for vertex in vertices:
-        g.add_vertex(vertex, label=vertex)
+        if vertex:
+            g.add_vertex(vertex, label=vertex)
 
     print "Edges: " + str(addToMap.counter)
     count = 0
@@ -142,7 +150,9 @@ def main():
         count += 1
         vertices = key.split("|")
         try:
-            g.add_edge(vertices[0], vertices[1], weight=value)
+            if vertices[0]:
+                if vertices[1]:
+                    g.add_edge(vertices[0], vertices[1], weight=value)
             del edgeMap[key]
             #           print "V: " + vertices[0] + " = " + vertices[1]
         except ValueError:
@@ -156,8 +166,69 @@ def main():
 
     community = g.community_multilevel(weights="weight")
 
+    arrays = []
+
+    i = 0
+    while i < community._len:
+        arrays.append([])
+        i += 1
+
+    x = 0
+    for vertex in g.vs["label"]:
+        if vertex:
+            arrays[community.membership[x]].append(vertex)
+            x += 1
+
+    #Report part
+    i = 0
+    while i < community._len:
+        languages = {}
+        orgcomp = {}
+        for vertex in arrays[i]:
+            row = map.get(vertex)
+
+            if row:
+
+                if row[1]:
+                    comp = row[1].replace(" ", "")
+                    if comp:
+                        addMap(orgcomp, comp, 1)
+
+                org = row[5][1:len(row[5]) - 1].split(",")
+
+                for organization in org:
+                    if org:
+                        organization = organization.replace(" ", "")
+                        addMap(orgcomp, organization, 1)
+
+                langs = row[4][1:len(row[4]) - 1].split(",")
+
+                for lang in langs:
+                    if lang:
+                        lang = lang.replace(" ", "")
+                        if lang != "None":
+                            addMap(languages, lang, 1)
+
+        print "For community i: " + str(i) + " (shown in " + color_list[i] + " )"
+        first = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+        del orgcomp[first]
+        second = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+        del orgcomp[second]
+        third = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+        print "Organizations : \n1. %s \n2. %s \n3. %s" % (first, second, third)
+
+        first = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+        del languages[first]
+        second = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+        del languages[second]
+        third = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+        print "Languages : \n1. %s \n2. %s \n3. %s" % (first, second, third)
+
+        i += 1
+
     layout = g.layout("automatic")
-    igraph.plot(community,layout=layout, target = "graph9.pdf", asp=0.35, bbox=(0, 0, 2000, 2000), margin=(100, 100, 100, 100),
+
+    igraph.plot(community,layout=layout, target = "graph.pdf", asp=0.35, bbox=(0, 0, 2000, 2000), margin=(100, 100, 100, 100),
                 vertex_color=[color_list[x % len(color_list)] for x in community.membership])
 
     print max(community.membership)  # Printed number of communties
