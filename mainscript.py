@@ -3,6 +3,10 @@ import csv
 import Queue
 import random
 import itertools
+import operator
+
+
+color_list = []
 
 
 def purify():
@@ -84,10 +88,19 @@ def _plot(g, membership=None, name="graph.pdf"):
         colors = []
         for i in range(0, max(membership) + 1):
             colors.append('%06X' % random.randint(0, 0xFFFFFF))
+            color_list.append('%06X' % random.randint(0, 0xFFFFFF))
         for vertex in g.vs():
             vertex["color"] = str('#') + colors[membership[vertex.index]]
         visual_style["vertex_color"] = g.vs["color"]
     igraph.plot(g, **visual_style)
+
+
+def addMap(map, key, value):
+    if key != " " and key != "":
+        if key in map:
+            map[key] = map[key] + value
+        else:
+            map[key] = value
 
 
 def main():
@@ -143,7 +156,6 @@ def main():
     while queue.qsize() > 0:
 
         popped = queue.get()
-        print "Poped: " + popped
         if popped == "!!!!!":
             break
         else:
@@ -210,7 +222,8 @@ def main():
     print "Mapping done."
 
     for vertex in vertices:
-        g.add_vertex(vertex, label=vertex)
+        if vertex:
+            g.add_vertex(vertex, label=vertex)
 
     print "Edges: " + str(addToMap.counter)
     count = 0
@@ -220,8 +233,12 @@ def main():
         count += 1
         vertices = key.split("|")
         try:
-            g.add_edge(vertices[0], vertices[1], weight=value)
-            edgeWeights.append(value)
+            if vertices[0]:
+                if vertices[1]:
+                    g.add_edge(vertices[0], vertices[1], weight=value)
+                    edgeWeights.append(value)
+
+            del edgeMap[key]
             #           print "V: " + vertices[0] + " = " + vertices[1]
         except ValueError:
             a += 1
@@ -229,58 +246,84 @@ def main():
 
     print "Edges are added to the graph. Count is: " + str(count) + " | Errors:" + str(a)
 
-    color_list = ['red', 'blue', 'green', 'cyan', 'pink', 'orange', 'grey', 'yellow', 'white', 'black', 'purple',
-                  'magenta']
+    community = g.community_walktrap(weights=edgeWeights, steps=4)
+    _plot(g, community.as_clustering().membership, name="graph_wt5.pdf")
 
-    # community3 = g.community_infomap(edge_weights=edgeWeights)
+    arrays = []
 
-    # print ("cm3 is done")
-    # community4 = g.community_multilevel(weights=edgeWeights)
-    # print ("cm4 is done")
-    # community5 = g.community_fastgreedy(weights=edgeWeights)
-    # print ("cm5 is done")
-    # community6 = g.community_leading_eigenvector(weights=edgeWeights)
-    # print ("cm6 is done")
-    #  community7 = g.community_edge_betweenness(weights=edgeWeights)
-    #  community8 = g.community_walktrap(weights=edgeWeights, steps=4)
-    community9 = g.community_walktrap(weights=edgeWeights, steps=4)
+    i = 0
+    while i < community.as_clustering()._len:
+        arrays.append([])
+        i += 1
 
-    print("cm is done!")
+    x = 0
+    for vertex in g.vs["label"]:
+        if vertex:
+            arrays[community.as_clustering().membership[x]].append(vertex)
+            x += 1
 
-    # _plot(g,community3.membership, name="graph_im.pdf")
-    # _plot(g,community4.membership, name="graph_ml.pdf")
-    # _plot(g,community5.as_clustering().membership, name="graph_fg.pdf")
-    # _plot(g,community6.membership, name="graph_lev.pdf")
-    # _plot(g,community7.membership, name="graph_eb.pdf")
-    # _plot(g,community8.as_clustering().membership, name="graph_wt4.pdf")
-    _plot(g, community9.as_clustering().membership, name="graph_wt5.pdf")
-    #    layout = g.layout("automatic")
-    #     igraph.plot(community3, target="graph_im.pdf", asp=0.8, bbox=(0, 0, 2000, 2000),
-    #                 margin=(100, 100, 100, 100),
-    #                 vertex_color=[color_list[x % len(color_list)] for x in community3.membership])
+    # Report part
+    i = 0
+    while i < len(community.as_clustering()):
+        languages = {}
+        orgcomp = {}
+        for vertex in arrays[i]:
+            row = map.get(vertex)
 
-    #    print max(community5.as_clustering().membership)
-    print max(community9.as_clustering().membership)
+            if row:
+
+                if row[1]:
+                    comp = row[1].replace(" ", "")
+                    if comp:
+                        addMap(orgcomp, comp, 1)
+
+                org = row[5][1:len(row[5]) - 1].split(",")
+
+                for organization in org:
+                    if org:
+                        organization = organization.replace(" ", "")
+                        addMap(orgcomp, organization, 1)
+
+                langs = row[4][1:len(row[4]) - 1].split(",")
+
+                for lang in langs:
+                    if lang:
+                        lang = lang.replace(" ", "")
+                        if lang != "None":
+                            addMap(languages, lang, 1)
+
+        first = ""
+        second = ""
+        third = ""
+        if len(orgcomp) > 0:
+            print "For community i: " + str(i) + " (shown in " + color_list[i] + " )"
+            first = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+            del orgcomp[first]
+            if len(orgcomp) > 0:
+                second = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+                del orgcomp[second]
+                if len(orgcomp) > 0:
+                    third = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+
+        print "Organizations : \n1. %s \n2. %s \n3. %s" % (first, second, third)
+        first,second,third = "","",""
+
+        if len(languages) > 0:
+            first = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+            del languages[first]
+            if len(languages) > 0:
+                second = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+                del languages[second]
+                if len(languages) > 0:
+                    third = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+
+        print "Languages : \n1. %s \n2. %s \n3. %s" % (first, second, third)
+
+        i += 1
+
+    print max(community.as_clustering().membership)  # Printed number of communties
+
 
 
 if __name__ == "__main__":
     main()
-
-"""
-   while q.qsize() != 0:
-        poped = q.get()
-
-        if poped != "!!!!":
-            followers = f1.get(poped)
-            following = f2.get(poped)
-
-            c1 = 0
-            c2 = 0
-            for person in followers:
-                addToMap(edgeMap, processingPerson, person, 0.3)
-                q.put(person)
-
-            for person in following:
-                addToMap(edgeMap, processingPerson, person, 0.1)
-                q.put(person)
-"""
