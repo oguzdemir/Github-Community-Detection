@@ -88,7 +88,7 @@ def _plot(g, membership=None, name="graph.pdf"):
         colors = []
         for i in range(0, max(membership) + 1):
             colors.append('%06X' % random.randint(0, 0xFFFFFF))
-            color_list.append('%06X' % random.randint(0, 0xFFFFFF))
+            color_list.append(str('#') + colors[i])
         for vertex in g.vs():
             vertex["color"] = str('#') + colors[membership[vertex.index]]
         visual_style["vertex_color"] = g.vs["color"]
@@ -199,25 +199,21 @@ def main():
 
         if row:
             followers = row[2][1:-1].split(",")
-            following = row[3][1:len(row[1]) - 1].split(",")
+            following = row[3][1:-1].split(",")
 
             if followers:
                 for person in followers:
                     if person in vertices:
-                        addToMap(edgeMap, popped, person, 0.02)
+                        addToMap(edgeMap, popped, person, 0.2)
             if following:
                 for person in following:
                     if person in vertices:
-                        addToMap(edgeMap, popped, person, 0.03)
+                        addToMap(edgeMap, popped, person, 0.3)
 
-    count = 0
     for key in organizations_and_company:
         if key is not None and key.strip() is not "" and len(organizations_and_company[key]) >= 2:
             for i, j in itertools.combinations(organizations_and_company[key], 2):
-                addToMap(edgeMap, i, j, 0.6)
-                count += 1
-
-    print("orgy times: " + str(count))
+                addToMap(edgeMap, i, j, 2)
 
     print "Mapping done."
 
@@ -246,8 +242,10 @@ def main():
 
     print "Edges are added to the graph. Count is: " + str(count) + " | Errors:" + str(a)
 
-    community = g.community_walktrap(weights=edgeWeights, steps=4)
-    _plot(g, community.as_clustering().membership, name="graph_wt5.pdf")
+    community = g.community_walktrap(weights=edgeWeights, steps=6)
+    # community = g.community_fastgreedy(weights=edgeWeights)
+    _plot(g, community.as_clustering().membership, name="graph_wt6.pdf")
+#    _plot(g, community.membership, name="graph_fg.pdf")
 
     arrays = []
 
@@ -295,8 +293,9 @@ def main():
         first = ""
         second = ""
         third = ""
+
+        print "For community i: " + str(i) + " (shown in " + color_list[i] + " )"
         if len(orgcomp) > 0:
-            print "For community i: " + str(i) + " (shown in " + color_list[i] + " )"
             first = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
             del orgcomp[first]
             if len(orgcomp) > 0:
