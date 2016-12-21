@@ -102,7 +102,6 @@ def addMap(map, key, value):
         else:
             map[key] = value
 
-
 def main():
     addToMap.counter = 0
 
@@ -144,11 +143,11 @@ def main():
         organizations_and_company[org.strip()].add(mainperson)
 
     for person in followers:
-        addToMap(edgeMap, mainperson, person, 0.2)
+        addToMap(edgeMap, mainperson, person, 0.25)
         queue.put(person)
 
     for person in following:
-        addToMap(edgeMap, mainperson, person, 0.3)
+        addToMap(edgeMap, mainperson, person, 0.25)
         queue.put(person)
 
     queue.put("!!!!!")
@@ -172,12 +171,12 @@ def main():
 
                 if followers:
                     for person in followers:
-                        addToMap(edgeMap, popped, person, 0.2)
+                        addToMap(edgeMap, popped, person, 0.25)
                         queue.put(person)
                         vertices.add(person)
                 if following:
                     for person in following:
-                        addToMap(edgeMap, popped, person, 0.3)
+                        addToMap(edgeMap, popped, person, 0.25)
                         queue.put(person)
                         vertices.add(person)
 
@@ -204,11 +203,11 @@ def main():
             if followers:
                 for person in followers:
                     if person in vertices:
-                        addToMap(edgeMap, popped, person, 0.2)
+                        addToMap(edgeMap, popped, person, 0.25)
             if following:
                 for person in following:
                     if person in vertices:
-                        addToMap(edgeMap, popped, person, 0.3)
+                        addToMap(edgeMap, popped, person, 0.25)
 
     for key in organizations_and_company:
         if key is not None and key.strip() is not "" and len(organizations_and_company[key]) >= 2:
@@ -217,9 +216,13 @@ def main():
 
     print "Mapping done."
 
+    xxx= 0
     for vertex in vertices:
         if vertex:
             g.add_vertex(vertex, label=vertex)
+            xxx +=1
+
+    print str(xxx)
 
     print "Edges: " + str(addToMap.counter)
     count = 0
@@ -242,11 +245,12 @@ def main():
 
     print "Edges are added to the graph. Count is: " + str(count) + " | Errors:" + str(a)
 
-    community = g.community_walktrap(weights=edgeWeights, steps=6)
+    community = g.community_walktrap(weights=edgeWeights, steps=2)
     # community = g.community_fastgreedy(weights=edgeWeights)
-    _plot(g, community.as_clustering().membership, name="graph_wt6.pdf")
+    _plot(g, community.as_clustering().membership, name="graph_wt2.pdf")
 #    _plot(g, community.membership, name="graph_fg.pdf")
 
+    print "Printing " + str(2)
     arrays = []
 
     i = 0
@@ -265,6 +269,8 @@ def main():
     while i < len(community.as_clustering()):
         languages = {}
         orgcomp = {}
+        org_counter = 0
+        lang_counter = 0
         for vertex in arrays[i]:
             row = map.get(vertex)
 
@@ -274,6 +280,7 @@ def main():
                     comp = row[1].replace(" ", "")
                     if comp:
                         addMap(orgcomp, comp, 1)
+                        org_counter += 1
 
                 org = row[5][1:len(row[5]) - 1].split(",")
 
@@ -281,6 +288,7 @@ def main():
                     if org:
                         organization = organization.replace(" ", "")
                         addMap(orgcomp, organization, 1)
+                        org_counter += 1
 
                 langs = row[4][1:len(row[4]) - 1].split(",")
 
@@ -288,6 +296,7 @@ def main():
                     if lang:
                         lang = lang.replace(" ", "")
                         if lang != "None":
+                            lang_counter += 1
                             addMap(languages, lang, 1)
 
         first = ""
@@ -297,26 +306,38 @@ def main():
         print "For community i: " + str(i) + " (shown in " + color_list[i] + " )"
         if len(orgcomp) > 0:
             first = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+            first1 = "1. " + first + " " + str(float(orgcomp[first]) / org_counter) + "\n"
             del orgcomp[first]
             if len(orgcomp) > 0:
                 second = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+                second1 = "2. " + second + " " + str(float(orgcomp[second]) / org_counter) + "\n"
                 del orgcomp[second]
                 if len(orgcomp) > 0:
                     third = max(orgcomp.iteritems(), key=operator.itemgetter(1))[0]
+                    third1 = "3. " + third + " " + str(float(orgcomp[third]) / org_counter) + "\n"
 
-        print "Organizations : \n1. %s \n2. %s \n3. %s" % (first, second, third)
-        first,second,third = "","",""
+        print "Organizations/Companies \n: %s %s %s" % (first1, second1, third1)
+
+        first = ""
+        second = ""
+        third = ""
+        first1 = ""
+        second1 = ""
+        third1 = ""
 
         if len(languages) > 0:
             first = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+            first1 = "1. " + first + " " + str(float(languages[first])/org_counter) + "\n"
             del languages[first]
             if len(languages) > 0:
                 second = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+                second1 = "2. " +second + " " + str(float(languages[second]) / org_counter) + "\n"
                 del languages[second]
                 if len(languages) > 0:
                     third = max(languages.iteritems(), key=operator.itemgetter(1))[0]
+                    third1 = "3. " +third + " " + str(float(languages[third]) / org_counter) + "\n"
 
-        print "Languages : \n1. %s \n2. %s \n3. %s" % (first, second, third)
+        print "Languages \n: %s %s %s" % (first1, second1, third1)
 
         i += 1
 
